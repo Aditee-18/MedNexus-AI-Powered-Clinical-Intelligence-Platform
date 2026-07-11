@@ -1,0 +1,42 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Endocrinology & Diabetology
+
+Diet Instructions & Sugar Control Advice
+--------------------------------------------------
+
+Patient Name: Neha Verma
+Age/Gender: 45 Years / Female
+Patient ID: AMH-2026-05294
+Consultation Date: 27-May-2026
+
+Dietary Recommendations:
+- Follow a balanced diabetic-friendly meal plan.
+- Consume high-fiber foods such as oats, whole grains, vegetables, and legumes.
+- Limit intake of refined carbohydrates including white bread, sweets, pastries, and sugary drinks.
+- Avoid excessive fried and processed foods.
+- Prefer low glycemic index fruits such as apples, guava, berries, and pears.
+- Maintain portion control during meals.
+- Include lean protein sources such as paneer, tofu, eggs, fish, and pulses.
+- Drink adequate water throughout the day.
+
+Sugar Control Advice:
+- Monitor fasting and postprandial blood glucose regularly.
+- Take prescribed medications and insulin doses consistently.
+- Do not skip meals after taking insulin or diabetic medication.
+- Engage in moderate physical activity such as brisk walking for 30-45 minutes daily.
+- Maintain regular sleep patterns and reduce stress levels.
+- Carry glucose tablets or a quick sugar source to manage hypoglycemia if needed.
+- Schedule routine HbA1c testing every 3 months.
+
+Lifestyle Recommendations:
+- Aim for gradual weight reduction under medical supervision.
+- Avoid smoking and alcohol consumption.
+- Practice stress management techniques including yoga or meditation.
+- Follow up with the endocrinologist as advised.
+
+Clinical Note:
+Patient counseled regarding risks associated with uncontrolled diabetes including kidney disease,
+nerve damage, cardiovascular complications, and vision impairment.
+
+

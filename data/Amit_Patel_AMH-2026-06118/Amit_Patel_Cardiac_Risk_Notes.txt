@@ -1,0 +1,43 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Cardiology
+
+Doctor Consultation Notes
+--------------------------------------------------
+
+Patient Name: Amit Patel
+Age/Gender: 55 Years / Male
+Patient ID: AMH-2026-06118
+Consultation Date: 27-May-2026
+Consulting Cardiologist: Dr. Rajeev Khanna, DM (Cardiology)
+
+Chief Complaints:
+- Intermittent chest discomfort
+- Mild shortness of breath on exertion
+- Occasional dizziness and fatigue
+- Elevated blood pressure readings
+
+Clinical Findings:
+Recent laboratory investigations reveal severely elevated LDL cholesterol and total cholesterol levels.
+ECG findings demonstrate ST-segment depression with ischemic changes suggestive of increased cardiovascular strain.
+
+Cardiology Assessment:
+Patient is currently at HIGH CARDIAC RISK due to the combination of:
+- Severe dyslipidemia
+- Hypertension
+- Abnormal ECG findings
+- Elevated inflammatory cardiac markers
+- Increased cardiovascular risk profile
+
+Recommendations:
+- Strict adherence to prescribed medications including beta blockers, aspirin, and statins.
+- Immediate dietary modification with reduced saturated fat and sodium intake.
+- Avoid smoking, alcohol consumption, and excessive stress.
+- Maintain regular blood pressure and heart rate monitoring.
+- Engage only in physician-approved physical activity.
+- Schedule follow-up ECG and cardiology review within 4 weeks.
+- Seek emergency medical care if chest pain, severe breathlessness, or palpitations worsen.
+
+Physician Warning:
+Patient has been counseled regarding the risk of acute coronary syndrome, myocardial infarction,
+stroke, and other cardiovascular complications if treatment compliance is poor.

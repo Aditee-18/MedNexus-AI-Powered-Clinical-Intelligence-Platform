@@ -1,0 +1,46 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Internal Medicine
+
+Doctor Consultation Notes
+--------------------------------------------
+
+Patient Name: Rohan Sharma
+Age/Gender: 62 Years / Male
+Patient ID: AMH-2026-04581
+Consultation Date: 27-May-2026
+Consulting Physician: Dr. Neeraj Malhotra, MD
+
+Chief Complaints:
+- Recurrent dizziness
+- Persistent headache over the past 2 weeks
+- Occasional fatigue and blurred vision
+
+Clinical Assessment:
+Patient presents with symptoms suggestive of progression of uncontrolled hypertension. 
+Blood pressure readings remain consistently elevated with associated mild hyperglycemia 
+and dyslipidemia noted in laboratory investigations.
+
+Physical Examination:
+- Blood Pressure: 168/102 mmHg
+- Pulse Rate: 88 bpm
+- Cardiovascular examination otherwise stable
+- No acute neurological deficit observed
+
+Assessment / Impression:
+Suspected progression of chronic hypertension with increased cardiovascular risk factors.
+
+Management & Advice:
+- Continue prescribed antihypertensive medications regularly.
+- Reduce sodium intake and avoid processed foods.
+- Maintain daily blood pressure monitoring.
+- Engage in regular low-impact physical activity such as walking.
+- Improve hydration and maintain proper sleep hygiene.
+- Avoid smoking and alcohol consumption.
+- Follow-up consultation recommended within 4 weeks.
+
+Physician Notes:
+Patient advised regarding risk of uncontrolled hypertension including stroke, heart disease,
+and kidney complications. Compliance with medications and lifestyle modifications emphasized.
+
+

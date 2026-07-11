@@ -1,0 +1,37 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Pediatrics
+
+Pediatric Consultation Notes
+--------------------------------------------------
+
+Patient Name: Aarav Mehta
+Age/Gender: 10 Years / Male
+Patient ID: AMH-2026-09437
+Consultation Date: 27-May-2026
+Consulting Pediatrician: Dr. Nidhi Arora, MD (Pediatrics)
+
+Chief Complaints:
+- Fatigue during sports and outdoor activities
+- Reduced appetite over the past few weeks
+- Mild generalized weakness
+
+Parent Concerns:
+Parents report decreased energy levels compared to usual activity and are concerned regarding
+the child’s nutritional intake and eating habits.
+
+Clinical Assessment:
+Laboratory investigations indicate mild iron deficiency anemia with slightly reduced hemoglobin levels.
+General physical examination is otherwise stable.
+
+Recommendations:
+- Encourage iron-rich foods including leafy vegetables, lentils, jaggery, dates, and fortified cereals.
+- Include vitamin C-rich fruits to improve iron absorption.
+- Maintain regular meal timings and balanced hydration.
+- Continue prescribed iron supplementation as advised.
+- Reduce excessive junk food intake and encourage nutritious snacks.
+
+Follow-Up:
+Pediatric follow-up and repeat hemoglobin evaluation recommended after 2 months.
+
+

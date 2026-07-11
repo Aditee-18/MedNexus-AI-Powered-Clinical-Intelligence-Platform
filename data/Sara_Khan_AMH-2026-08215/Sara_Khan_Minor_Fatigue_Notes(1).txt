@@ -1,0 +1,36 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Preventive Healthcare
+
+Doctor Consultation Notes
+--------------------------------------------------
+
+Patient Name: Sara Khan
+Age/Gender: 22 Years / Female
+Patient ID: AMH-2026-08215
+Consultation Date: 27-May-2026
+Consulting Physician: Dr. Meera Joshi, MD
+
+Chief Complaints:
+- Mild fatigue over the past few weeks
+- Occasional low energy levels during evening hours
+- No fever, dizziness, or significant systemic complaints
+
+Clinical Findings:
+General physical examination is within normal limits.
+Vital signs are stable and hematological parameters are normal.
+Laboratory investigations reveal mild Vitamin D deficiency.
+
+Assessment:
+Minor fatigue likely associated with mild Vitamin D deficiency and lifestyle-related factors.
+
+Recommendations:
+- Continue prescribed Vitamin D supplementation regularly.
+- Increase sunlight exposure for 15–20 minutes daily.
+- Maintain balanced nutrition and adequate hydration.
+- Ensure proper sleep schedule and regular physical activity.
+- Reduce prolonged screen exposure and maintain work-life balance.
+
+Physician Notes:
+No acute illness or major abnormalities detected at present.
+Patient advised to follow healthy lifestyle habits and attend routine follow-up if symptoms persist.

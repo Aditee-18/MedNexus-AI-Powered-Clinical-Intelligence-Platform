@@ -1,0 +1,35 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Internal Medicine
+
+Doctor Consultation Notes
+--------------------------------------------------
+
+Patient Name: Meera Joshi
+Age/Gender: 35 Years / Female
+Patient ID: AMH-2026-10561
+Consultation Date: 27-May-2026
+Consulting Physician: Dr. Kavita Sharma, MD
+
+Chief Complaints:
+- Persistent fever for the past 4 days
+- Generalized body ache
+- Fatigue and weakness
+- Reduced energy levels and poor appetite
+
+Clinical Assessment:
+Patient appears mildly febrile and fatigued during examination.
+Symptoms and preliminary laboratory findings are suggestive of an underlying bacterial infection.
+
+Recommendations:
+- Blood investigations including CBC, CRP, ESR, and infection markers advised.
+- Initiation of prescribed antibiotic therapy recommended.
+- Maintain adequate hydration and proper rest.
+- Monitor body temperature regularly.
+- Follow-up consultation advised within 5–7 days or earlier if symptoms worsen.
+
+Physician Notes:
+Patient counseled regarding importance of completing antibiotic course and monitoring for worsening symptoms
+such as persistent high fever, breathing difficulty, or severe weakness.
+
+

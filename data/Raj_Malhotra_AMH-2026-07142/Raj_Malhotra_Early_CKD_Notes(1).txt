@@ -1,0 +1,41 @@
+
+Apex Multispeciality Hospital & Diagnostics
+Department of Nephrology
+
+Doctor Consultation Notes
+--------------------------------------------------
+
+Patient Name: Raj Malhotra
+Age/Gender: 50 Years / Male
+Patient ID: AMH-2026-07142
+Consultation Date: 27-May-2026
+Consulting Nephrologist: Dr. Sameer Bhatia, DM (Nephrology)
+
+Chief Complaints:
+- Fatigue and weakness
+- Mild swelling in feet and ankles
+- Reduced appetite
+- Elevated blood pressure readings
+
+Clinical Findings:
+Recent renal function tests demonstrate persistently elevated serum creatinine and abnormal urea levels.
+Estimated Glomerular Filtration Rate (eGFR) is reduced, indicating impaired kidney function.
+
+Nephrology Assessment:
+Patient is showing signs consistent with EARLY CHRONIC KIDNEY DISEASE (CKD).
+Current findings suggest progressive renal impairment requiring close medical monitoring and lifestyle modification.
+
+Recommendations:
+- Strict control of blood pressure and blood glucose levels.
+- Follow a kidney-friendly low-sodium diet.
+- Limit excessive protein and potassium intake as advised.
+- Maintain hydration according to physician guidance.
+- Avoid over-the-counter pain medications unless prescribed.
+- Regular monitoring of kidney function tests is strongly advised.
+- Schedule nephrology follow-up within 4 weeks.
+
+Physician Warning:
+Patient has been counseled regarding the risk of CKD progression leading to worsening renal function,
+electrolyte imbalance, cardiovascular complications, and potential long-term dialysis requirement if untreated.
+
+
