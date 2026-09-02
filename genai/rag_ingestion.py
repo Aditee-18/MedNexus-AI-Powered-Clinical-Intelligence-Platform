@@ -7,7 +7,15 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 
 
-ocr_reader=easyocr.Reader(['en'])
+# Lazy loader for EasyOCR to prevent backend startup delays
+_ocr_reader = None
+
+def get_ocr_reader():
+    global _ocr_reader
+    if _ocr_reader is None:
+        print("[Lazy Load] Initializing EasyOCR PyTorch Model...")
+        _ocr_reader = easyocr.Reader(['en'])
+    return _ocr_reader
 
 #PDF loader
 def load_pdf(file_path):
@@ -41,8 +49,9 @@ def load_csv(file_path):
 
 #image ocr loader
 def load_img(file_path):
-    result=ocr_reader.readtext(str(file_path),detail=0)
-    text=" ".join(result)
+    reader = get_ocr_reader()
+    result = reader.readtext(str(file_path), detail=0)
+    text = " ".join(result)
 
     return[
         Document(

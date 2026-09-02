@@ -1,27 +1,180 @@
 import { useState, useRef, useEffect } from 'react';
-
-interface Message {
-  role: 'user' | 'ai';
-  content: string;
-}
-
-// We merged profile and settings into one view: 'account'
-type ViewState = 'chat' | 'account';
+import type { ViewState, Message, AlertItem, UserSession, ChatSession } from './types';
+import { Sidebar } from './components/Sidebar';
+import { Dashboard } from './components/Dashboard';
+import { AlertsTriageView } from './components/AlertsTriageView';
+import { AlertSummaryModal } from './components/AlertSummaryModal';
+import { IngestionModal } from './components/IngestionModal';
+import { Login } from './components/Login';
+import { Signup } from './components/Signup';
 
 export default function App() {
-  // --- STATE ---
-  const [currentView, setCurrentView] = useState<ViewState>('chat');
+  // --- AUTH SESSION STATE ---
+  const [userSession, setUserSession] = useState<UserSession | null>(() => {
+    const saved = localStorage.getItem('mednexus_session');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return null; }
+    }
+    return null;
+  });
 
+  const doctorName = userSession ? userSession.name : 'Aditee Srivastava';
+
+  // --- VIEW STATE ---
+  const [currentView, setCurrentView] = useState<ViewState>(() => userSession ? 'chat' : 'login');
+
+  // --- CHAT SESSION & HISTORY STATE ---
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => `session_${Date.now()}`);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'ai', content: 'Hello Dr. Srivastava. MedNexus AI is online. What would you like to analyze today?' }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+
+  const isRecordingRef = useRef(false);
+  isRecordingRef.current = isRecording;
+
+  // --- ALERTS STATE ---
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [selectedAlertModal, setSelectedAlertModal] = useState<AlertItem | null>(null);
+
+  // --- UPLOAD MODAL STATE ---
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  const [patientNameInput, setPatientNameInput] = useState('');
+  const [patientIdInput, setPatientIdInput] = useState('');
+  const [patientAgeInput, setPatientAgeInput] = useState<number>(30);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatusMsg, setUploadStatusMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // --- VOICE TYPING SETUP ---
+  // --- AUDIO CHIME PLAYER ---
+  const playAudioChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.8);
+    } catch (e) {
+      console.log("Audio play notice:", e);
+    }
+  };
+
+  // --- AUTH HANDLERS ---
+  const handleLoginSuccess = (session: UserSession) => {
+    setUserSession(session);
+    localStorage.setItem('mednexus_session', JSON.stringify(session));
+    setCurrentView('chat');
+  };
+
+  const handleLogout = () => {
+    setUserSession(null);
+    localStorage.removeItem('mednexus_session');
+    setCurrentView('login');
+  };
+
+  // --- FETCH CHAT SESSIONS FROM MONGODB ---
+  const fetchChatSessions = async () => {
+    const userId = userSession ? userSession.user_id : 'usr_default';
+    try {
+      const res = await fetch(`http://localhost:8000/api/chat/sessions?user_id=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.sessions && Array.isArray(data.sessions)) {
+          setChatSessions(data.sessions);
+        }
+      }
+    } catch (e) {
+      console.log("Fetch chat sessions notice:", e);
+    }
+  };
+
+  // --- LOAD CHAT HISTORY FOR SELECTED SESSION ---
+  const handleSelectSession = async (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    setCurrentView('chat');
+    try {
+      const res = await fetch(`http://localhost:8000/api/chat/history/${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      }
+    } catch (e) {
+      console.log("Fetch chat history notice:", e);
+    }
+  };
+
+  // --- FETCH ALERTS LIST ---
+  const fetchAlerts = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/alerts');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.alerts && Array.isArray(data.alerts)) {
+          setAlerts(data.alerts);
+        }
+      }
+    } catch (e) {
+      console.log("Could not fetch alerts list:", e);
+    }
+  };
+
+  // --- ACKNOWLEDGE ALERT ---
+  const handleAcknowledgeAlert = async (alertId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const res = await fetch(`http://localhost:8000/api/alerts/${alertId}/acknowledge`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        setAlerts(prev => prev.map(a => a.alert_id === alertId ? { ...a, status: 'acknowledged', acknowledgedAt: new Date().toISOString() } : a));
+        if (selectedAlertModal && selectedAlertModal.alert_id === alertId) {
+          setSelectedAlertModal(prev => prev ? { ...prev, status: 'acknowledged', acknowledgedAt: new Date().toISOString() } : null);
+        }
+      }
+    } catch (err) {
+      console.error("Acknowledge alert error:", err);
+    }
+  };
+
+  // --- FETCH PATIENTS LIST ---
+  const fetchPatients = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/patients');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.patients && Array.isArray(data.patients) && data.patients.length > 0 && !selectedPatientId) {
+          setSelectedPatientId(data.patients[0].patient_id);
+          setPatientNameInput(data.patients[0].name);
+          setPatientIdInput(data.patients[0].patient_id);
+          setPatientAgeInput(data.patients[0].age || 30);
+        }
+      }
+    } catch (e) {
+      console.log("Could not fetch patients list:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (userSession) {
+      fetchPatients();
+      fetchAlerts();
+      fetchChatSessions();
+    }
+  }, [userSession]);
+
+  // --- SMOOTH VOICE ENGINE WITH KEEP-ALIVE AUTO-RESTART & BUFFERING ---
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -29,21 +182,40 @@ export default function App() {
       recognition.continuous = true;
       recognition.interimResults = true;
 
+      let finalTranscriptBuffer = '';
+
       recognition.onresult = (event: any) => {
-        let interimTranscript = '';
+        let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          interimTranscript += event.results[i][0].transcript;
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscriptBuffer += transcript + ' ';
+          } else {
+            interim += transcript;
+          }
         }
-        setChatInput(prev => prev + (prev.endsWith(' ') ? '' : ' ') + interimTranscript.trim());
+        setChatInput(finalTranscriptBuffer + interim);
       };
 
       recognition.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
-        setIsRecording(false);
+        console.error("Speech recognition notice:", event.error);
+        if (event.error !== 'no-speech') {
+          setIsRecording(false);
+        }
       };
 
       recognition.onend = () => {
-        setIsRecording(false);
+        // Auto-restart keep-alive loop if dictation mode is still enabled by user
+        if (isRecordingRef.current) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.log("Auto restart notice:", e);
+            setIsRecording(false);
+          }
+        } else {
+          setIsRecording(false);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -52,19 +224,19 @@ export default function App() {
 
   // --- HANDLERS ---
   const handleSend = async (customText?: string) => {
-    // If a custom string is passed (like from the Scan button), use it. Otherwise, use chatInput.
     const userText = customText || chatInput;
     if (!userText.trim()) return;
 
+    const userId = userSession ? userSession.user_id : 'usr_default';
+
     setChatInput('');
-    setCurrentView('chat'); // Instantly switch to chat view if they were in settings
+    setCurrentView('chat');
 
     if (isRecording && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
     }
 
-    // 1. Put user message and "Thinking..." on screen immediately
     setMessages(prev => [
       ...prev,
       { role: 'user', content: userText },
@@ -72,51 +244,53 @@ export default function App() {
     ]);
 
     try {
-      // 2. The Actual Connection to your FastAPI Backend!
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const res = await fetch('http://localhost:8000/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: 'doc-session-123',
+          session_id: activeSessionId,
+          user_id: userId,
           user_query: userText
-        })
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-      const data = await response.json();
+      const data = await res.json();
+      const aiReply = data.response || "No response received from agent.";
 
-      // 3. Swap "Thinking..." with the real AI response
       setMessages(prev => {
-        const updatedMessages = [...prev];
-        updatedMessages[updatedMessages.length - 1] = { role: 'ai', content: data.response };
-        return updatedMessages;
+        const updated = [...prev];
+        if (updated.length > 0 && updated[updated.length - 1].content === 'Thinking...') {
+          updated[updated.length - 1] = { role: 'ai', content: aiReply };
+        } else {
+          updated.push({ role: 'ai', content: aiReply });
+        }
+        return updated;
       });
 
-    } catch (error) {
-      console.error("Failed to fetch AI response:", error);
+      // Refresh chat sessions list in sidebar
+      fetchChatSessions();
+
+    } catch (err: any) {
+      console.error("Agent Request Error:", err);
       setMessages(prev => {
-        const updatedMessages = [...prev];
-        updatedMessages[updatedMessages.length - 1] = {
-          role: 'ai',
-          content: '⚠️ Connection Error: Could not reach the MedNexus Python backend. Make sure FastAPI is running on port 8000.'
-        };
-        return updatedMessages;
+        const updated = [...prev];
+        const errorMsg = `⚠️ Error connecting to MedNexus Backend (${err.message}). Please verify python server is running.`;
+        if (updated.length > 0 && updated[updated.length - 1].content === 'Thinking...') {
+          updated[updated.length - 1] = { role: 'ai', content: errorMsg };
+        } else {
+          updated.push({ role: 'ai', content: errorMsg });
+        }
+        return updated;
       });
     }
   };
 
-  const handleRunScan = () => {
-    // Triggers the AI automatically to scan the database
-    handleSend("Run a complete time-period risk scan across all patient records and highlight any critical anomalies.");
-  };
-
   const handleNewChat = () => {
-    setMessages([{ role: 'ai', content: 'Hello Dr. Srivastava. MedNexus AI is online. What would you like to analyze today?' }]);
+    const newSessionId = `session_${Date.now()}`;
+    setActiveSessionId(newSessionId);
+    setMessages([]);
     setChatInput('');
     setCurrentView('chat');
   };
@@ -124,250 +298,192 @@ export default function App() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setMessages([...messages, { role: 'user', content: `📄 Uploaded file: ${file.name}` }]);
+      setSelectedFile(file);
+      setIsUploadModalOpen(true);
+      fetchPatients();
     }
   };
 
-  const toggleVoiceRecording = () => {
-    if (!recognitionRef.current) return alert("Voice typing requires Chrome or Edge.");
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
+  const handleStartUpload = async () => {
+    if (!selectedFile) return alert("Please select a file to upload.");
+    
+    const targetId = patientIdInput.trim();
+    const targetName = patientNameInput.trim();
+    const targetAge = patientAgeInput;
+
+    if (!targetId) {
+      return alert("Please enter the Patient ID (full ID or last 4-5 digits).");
+    }
+
+    setIsUploading(true);
+    setUploadStatusMsg("Matching Patient ID & initiating dual ingestion...");
+
+    try {
+      const formData = new FormData();
+      formData.append('patient_id', targetId);
+      formData.append('name', targetName);
+      formData.append('age', targetAge.toString());
+      formData.append('file', selectedFile);
+
+      const res = await fetch('http://localhost:8000/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Upload failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setIsUploading(false);
+      setIsUploadModalOpen(false);
+      const uploadedFileName = selectedFile.name;
+      setSelectedFile(null);
+      
+      const resolvedId = data.patient_id;
+      const resolvedName = data.patient_name;
+      const alertMsg = data.alert_status || '';
+
+      if (alertMsg.includes('ALERT_CREATED')) {
+        playAudioChime();
+        fetchAlerts();
+      }
+
+      setMessages(prev => [
+        ...prev,
+        { role: 'user', content: `📄 Uploaded file: '${uploadedFileName}' for Patient ID '${targetId}'` },
+        { role: 'ai', content: `✅ **Dual Ingestion Successful!**\n\n- **Patient:** ${resolvedName} (ID: \`${resolvedId}\`)\n- **File Ingested:** \`${uploadedFileName}\`\n- **MongoDB:** ${data.mongodb_status}\n- **ChromaDB:** ${data.chromadb_status}\n- **Post-Ingestion Risk Scan:** ${alertMsg}\n\nFile saved to \`data/\` directory. Vectors indexed in ChromaDB database.` }
+      ]);
+
+      fetchPatients();
+
+    } catch (err: any) {
+      console.error("Upload Error:", err);
+      setIsUploading(false);
+      setUploadStatusMsg(`❌ Upload Failed: ${err.message}`);
     }
   };
+
+  // --- RENDER AUTH SCREENS IF NOT LOGGED IN ---
+  if (!userSession) {
+    if (currentView === 'signup') {
+      return <Signup onSignupSuccess={handleLoginSuccess} switchToLogin={() => setCurrentView('login')} />;
+    }
+    return <Login onLoginSuccess={handleLoginSuccess} switchToSignup={() => setCurrentView('signup')} />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-900 font-sans text-slate-200 overflow-hidden">
+      
+      {/* LEFT SIDEBAR */}
+      <Sidebar
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        handleNewChat={handleNewChat}
+        alerts={alerts}
+        fetchAlerts={fetchAlerts}
+        doctorName={doctorName}
+        chatSessions={chatSessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onLogout={handleLogout}
+      />
 
-      {/* --- LEFT SIDEBAR --- */}
-      <div className="w-64 bg-slate-950 flex flex-col border-r border-slate-800 z-20">
+      {/* VIEW 1 & VIEW 2: CHAT & DASHBOARD */}
+      {currentView === 'chat' && (
+        <Dashboard
+          doctorName={doctorName}
+          messages={messages}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          handleSend={handleSend}
+          isRecording={isRecording}
+          setIsRecording={setIsRecording}
+          recognitionRef={recognitionRef}
+          fileInputRef={fileInputRef}
+          handleFileUpload={handleFileUpload}
+        />
+      )}
 
-        <div className="p-4 space-y-2">
-          <button
-            onClick={handleNewChat}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors border border-slate-700"
-          >
-            <span className="text-xl">+</span> New Chat
-          </button>
+      {/* VIEW 3: CLINICAL ALERTS TRIAGE DASHBOARD */}
+      {currentView === 'alerts' && (
+        <AlertsTriageView
+          alerts={alerts}
+          fetchAlerts={fetchAlerts}
+          setSelectedAlertModal={setSelectedAlertModal}
+          handleAcknowledgeAlert={handleAcknowledgeAlert}
+        />
+      )}
 
-          {/* NEW: RUN SCAN BUTTON */}
-          <button
-            onClick={handleRunScan}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20"
-          >
-            <span className="text-xl">📊</span> Run Scan
-          </button>
-        </div>
+      {/* VIEW 4: DOCTOR ACCOUNT & PREFERENCES */}
+      {currentView === 'account' && (
+        <div className="flex-1 overflow-y-auto p-8 pb-20 bg-slate-900">
+          <div className="max-w-4xl mx-auto space-y-8">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-100">Doctor Profile & Settings</h1>
+                <p className="text-xs text-slate-400 mt-1">Manage clinician preferences and platform credentials.</p>
+              </div>
+              <button
+                onClick={() => setCurrentView('chat')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+              >
+                ← Back to Chat
+              </button>
+            </div>
 
-        <div className="px-4 py-2 mt-2">
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            <h3 className="text-red-400 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-              Active Alerts
-            </h3>
-            <p className="text-sm text-slate-300 truncate">⚠️ Rohan Sharma (BP Spike)</p>
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center gap-6 shadow-xl">
+              <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg border-2 border-blue-400">
+                {doctorName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-100">{doctorName}</h2>
+                <p className="text-sm text-slate-400">{userSession.specialty} • {userSession.hospital_id}</p>
+                <div className="flex gap-2 mt-3">
+                  <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-md border border-blue-500/20 font-medium">Verified Clinician</span>
+                  <span className="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-md border border-slate-700 font-mono">Email: {userSession.email}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button
+                onClick={handleLogout}
+                className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-lg shadow-red-950/30 transition-all border border-red-500"
+              >
+                🔒 Logout Session
+              </button>
+            </div>
+
           </div>
         </div>
+      )}
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 mt-4">
-          <p className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider px-2">Recent</p>
-          {['Aarav Mehta Labs', 'Cardiac Protocol 2026', 'SafetyNet Integration'].map((chat, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentView('chat')}
-              className={`w-full text-left px-3 py-2 text-sm rounded-md truncate transition-colors ${currentView === 'chat' ? 'bg-slate-800 text-slate-200' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-            >
-              💬 {chat}
-            </button>
-          ))}
-        </div>
+      {/* AI CLINICAL SUMMARY MODAL */}
+      <AlertSummaryModal
+        selectedAlertModal={selectedAlertModal}
+        setSelectedAlertModal={setSelectedAlertModal}
+        handleAcknowledgeAlert={handleAcknowledgeAlert}
+      />
 
-        {/* COMBINED ACCOUNT BUTTON */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950">
-          <button
-            onClick={() => setCurrentView('account')}
-            className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${currentView === 'account' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}
-          >
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-              AS
-            </div>
-            <div className="text-left flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-slate-200 leading-tight truncate">Aditee S.</p>
-              <p className="text-xs text-slate-500">Preferences ⚙️</p>
-            </div>
-          </button>
-        </div>
-      </div>
+      {/* UPLOAD FILE & INGESTION MODAL */}
+      <IngestionModal
+        isUploadModalOpen={isUploadModalOpen}
+        setIsUploadModalOpen={setIsUploadModalOpen}
+        selectedFile={selectedFile}
+        setSelectedFile={setSelectedFile}
+        patientIdInput={patientIdInput}
+        setPatientIdInput={setPatientIdInput}
+        patientNameInput={patientNameInput}
+        setPatientNameInput={setPatientNameInput}
+        patientAgeInput={patientAgeInput}
+        setPatientAgeInput={setPatientAgeInput}
+        isUploading={isUploading}
+        uploadStatusMsg={uploadStatusMsg}
+        handleStartUpload={handleStartUpload}
+      />
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <div className="flex-1 flex flex-col bg-slate-900 relative">
-
-        {/* VIEW 1: THE CHAT INTERFACE */}
-        {currentView === 'chat' && (
-          <>
-            <div className="h-14 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm z-10">
-              <h1 className="font-semibold text-slate-200">MedNexus 3.3-70b</h1>
-              <div className="flex gap-2">
-                <span className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-md font-medium border border-blue-500/20">RAG Active</span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {messages.map((msg, index) => (
-                <div key={index} className={`flex w-full ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                  <div className={`max-w-[75%] flex gap-4 ${msg.role === 'ai' ? 'flex-row' : 'flex-row-reverse'}`}>
-
-                    {/* Avatar */}
-                    <div className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-white font-bold shadow-sm ${msg.role === 'ai' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
-                      {msg.role === 'ai' ? 'AI' : 'AS'}
-                    </div>
-
-                    {/* Chat Bubble */}
-                    <div className={`p-4 rounded-2xl text-base leading-relaxed whitespace-pre-wrap shadow-sm ${msg.role === 'ai'
-                        ? 'bg-slate-800 text-slate-200 rounded-tl-sm'
-                        : 'bg-blue-600 text-white rounded-tr-sm'
-                      }`}>
-                      {msg.content}
-                    </div>
-
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="w-full pt-2 pb-6 px-4 bg-gradient-to-t from-slate-900 via-slate-900 to-transparent">
-              <div className="max-w-3xl mx-auto relative flex items-end gap-2 bg-slate-800 border border-slate-700 rounded-2xl p-2 focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 shadow-xl transition-all">
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".pdf,.txt,.csv,.jpg,.png" />
-                <button onClick={() => fileInputRef.current?.click()} className="p-4 text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-700 transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-                </button>
-                <textarea
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder={isRecording ? "Listening..." : "Message MedNexus..."}
-                  className="flex-1 max-h-48 bg-transparent px-3 py-4 focus:outline-none text-slate-100 placeholder-slate-500 resize-none min-h-[80px] text-base"
-                />
-                <button onClick={toggleVoiceRecording} className={`p-4 rounded-xl transition-all ${isRecording ? 'text-red-400 bg-red-400/10 animate-pulse' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'}`}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>
-                </button>
-                <button onClick={() => handleSend()} disabled={!chatInput.trim() && !isRecording} className="p-4 bg-white text-slate-900 rounded-xl disabled:bg-slate-700 disabled:text-slate-500 hover:bg-slate-200 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                </button>
-              </div>
-              <p className="text-center text-xs text-slate-500 mt-3">
-                MedNexus can make mistakes. Check critical clinical information.
-              </p>
-            </div>
-          </>
-        )}
-
-        {/* VIEW 2: MERGED ACCOUNT & SETTINGS PAGE */}
-        {currentView === 'account' && (
-          <div className="flex-1 overflow-y-auto p-10 pb-20">
-            <div className="max-w-3xl mx-auto">
-
-              {/* Profile Header */}
-              <div className="flex items-center gap-6 mb-10 pb-8 border-b border-slate-800">
-                <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-3xl shadow-lg">
-                  AS
-                </div>
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-100 mb-2">Dr. Aditee Srivastava</h2>
-                  <div className="flex gap-3">
-                    <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-md border border-blue-500/20">Verified Admin</span>
-                    <span className="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-md border border-slate-700">Hospital ID: MED-2026</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid Layout for Settings */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* Appearance */}
-                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">🎨 Appearance</h3>
-                  <div className="space-y-3">
-                    <button className="w-full text-left px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Light Mode</button>
-                    <button className="w-full text-left px-4 py-3 bg-blue-600 border border-blue-500 rounded-lg text-white font-medium shadow-md">Dark Mode (Active)</button>
-                    <button className="w-full text-left px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Sync with System</button>
-                  </div>
-                </div>
-
-                {/* AI Preferences */}
-                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">🧠 AI Preferences</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm text-slate-400 mb-2 block">Response Style</label>
-                      <select className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-3 outline-none focus:border-blue-500">
-                        <option>Detailed & Clinical</option>
-                        <option>Concise / Summary</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-slate-400 mb-2 block">Interface Language</label>
-                      <select className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-3 outline-none focus:border-blue-500">
-                        <option>English (US)</option>
-                        <option>Hindi</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Documents Management */}
-                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">📂 Documents</h3>
-                  <div className="space-y-3">
-                    <button className="w-full text-left px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors flex justify-between">
-                      Manage Uploaded Files <span>→</span>
-                    </button>
-                    <button className="w-full text-left px-4 py-3 bg-slate-900 border border-red-900/30 rounded-lg text-red-400 hover:bg-red-900/50 transition-colors">
-                      Delete Indexed Documents
-                    </button>
-                  </div>
-                </div>
-
-                {/* Chat Settings */}
-                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">💬 Chat Settings</h3>
-                  <div className="space-y-3">
-                    <button className="w-full text-left px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors flex justify-between">
-                      Export Conversations <span>⬇️</span>
-                    </button>
-                    <button className="w-full text-left px-4 py-3 bg-slate-900 border border-red-900/30 rounded-lg text-red-400 hover:bg-red-900/50 transition-colors">
-                      Clear Chat History
-                    </button>
-                  </div>
-                </div>
-
-                {/* Privacy & Security (Full Width) */}
-                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:col-span-2">
-                  <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">🔒 Privacy & Security</h3>
-                  <div className="flex gap-4">
-                    <button className="flex-1 px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">
-                      Change Password
-                    </button>
-                    <button className="flex-1 px-4 py-3 bg-red-600 border border-red-500 rounded-lg text-white hover:bg-red-700 transition-colors shadow-md shadow-red-900/20">
-                      Logout
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
     </div>
   );
 }

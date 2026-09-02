@@ -7,12 +7,20 @@ from sentence_transformers import SentenceTransformer
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CHROMA_DB_PATH = str(ROOT_DIR / "genai" / "chroma_db")
 
-embedding_model=SentenceTransformer("all-MiniLM-L6-v2")
+_embedding_model = None
+
+def get_embedding_model():
+    global _embedding_model
+    if _embedding_model is None:
+        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _embedding_model
+
 chroma_client=chromadb.PersistentClient(path=CHROMA_DB_PATH)
 collection=chroma_client.get_collection(name="patient_records")
 
 def retrieve_patient_info(query,patient_id=None,n_results=5):
-    query_embedding=embedding_model.encode([query]).tolist()
+    model = get_embedding_model()
+    query_embedding=model.encode([query]).tolist()
 
     w={"patient_id":patient_id} if patient_id else None
     result = collection.query(

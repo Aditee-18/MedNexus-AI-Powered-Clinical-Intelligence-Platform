@@ -16,3 +16,6 @@ uuid
 easyocr
 sentence_transformers
 dotenv
+datasets
+ragas
+langchain-huggingface

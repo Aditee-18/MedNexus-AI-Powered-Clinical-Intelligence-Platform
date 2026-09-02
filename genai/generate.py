@@ -7,13 +7,17 @@ from langchain_core.output_parsers import StrOutputParser
 load_dotenv()
 key=os.getenv("GROQ_API_KEY")
 
-llm=ChatGroq(groq_api_key=key,model_name="llama-3.3-70b-versatile",temperature=1,max_tokens=1024)
+llm=ChatGroq(groq_api_key=key,model_name="openai/gpt-oss-120b",temperature=0.3,max_tokens=1024)
 
 prompt_template=PromptTemplate.from_template(
     """You are MedNexus AI, a highly intelligent clinical assistant. 
     Use the following pieces of retrieved patient medical records to answer the doctor's question.
     If you cannot find the answer in the provided context, state clearly that the information is missing.
     Do not invent or guess any medical data.
+
+    Formatting Rules:
+    - Default to clean, structured BULLET POINTS with bold section headings (e.g. 📋 **Primary Diagnosis**, 🔬 **Key Laboratory Results**, 💊 **Prescribed Treatment**, 💡 **Clinical Advice & Follow-up**).
+    - Use Markdown tables ONLY for multi-date numerical lab/vital trends or when explicitly requested by the doctor.
 
     Context (Patient Records):
     {context}
