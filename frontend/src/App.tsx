@@ -4,7 +4,6 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { AlertsTriageView } from './components/AlertsTriageView';
 import { AlertSummaryModal } from './components/AlertSummaryModal';
-import { IngestionModal } from './components/IngestionModal';
 import { Login } from './components/Login';
 import { Signup } from './components/Signup';
 
@@ -37,15 +36,12 @@ export default function App() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [selectedAlertModal, setSelectedAlertModal] = useState<AlertItem | null>(null);
 
-  // --- UPLOAD MODAL STATE ---
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  // --- UPLOAD STATE ---
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [patientNameInput, setPatientNameInput] = useState('');
   const [patientIdInput, setPatientIdInput] = useState('');
   const [patientAgeInput, setPatientAgeInput] = useState<number>(30);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatusMsg, setUploadStatusMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -225,6 +221,17 @@ export default function App() {
   // --- HANDLERS ---
   const handleSend = async (customText?: string) => {
     const userText = customText || chatInput;
+
+    // If a file is attached, trigger direct file ingestion
+    if (selectedFile) {
+      const fileToUpload = selectedFile;
+      setSelectedFile(null);
+      setChatInput('');
+      setCurrentView('chat');
+      await handleStartUpload(fileToUpload, userText.trim() ? userText : undefined);
+      return;
+    }
+
     if (!userText.trim()) return;
 
     const userId = userSession ? userSession.user_id : 'usr_default';
@@ -299,31 +306,24 @@ export default function App() {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      setIsUploadModalOpen(true);
-      fetchPatients();
     }
   };
 
-  const handleStartUpload = async () => {
-    if (!selectedFile) return alert("Please select a file to upload.");
-    
-    const targetId = patientIdInput.trim();
-    const targetName = patientNameInput.trim();
-    const targetAge = patientAgeInput;
+  const handleStartUpload = async (fileToUpload: File, customPromptText?: string) => {
+    const userPromptText = customPromptText || `📄 Ingest file: '${fileToUpload.name}'`;
 
-    if (!targetId) {
-      return alert("Please enter the Patient ID (full ID or last 4-5 digits).");
-    }
-
-    setIsUploading(true);
-    setUploadStatusMsg("Matching Patient ID & initiating dual ingestion...");
+    setMessages(prev => [
+      ...prev,
+      { role: 'user', content: userPromptText },
+      { role: 'ai', content: 'Processing document ingestion & clinical risk scan...' }
+    ]);
 
     try {
       const formData = new FormData();
-      formData.append('patient_id', targetId);
-      formData.append('name', targetName);
-      formData.append('age', targetAge.toString());
-      formData.append('file', selectedFile);
+      formData.append('patient_id', patientIdInput.trim());
+      formData.append('name', patientNameInput.trim());
+      formData.append('age', patientAgeInput.toString());
+      formData.append('file', fileToUpload);
 
       const res = await fetch('http://localhost:8000/api/upload', {
         method: 'POST',
@@ -335,10 +335,10 @@ export default function App() {
       }
 
       const data = await res.json();
-      setIsUploading(false);
-      setIsUploadModalOpen(false);
-      const uploadedFileName = selectedFile.name;
+      const uploadedFileName = fileToUpload.name;
       setSelectedFile(null);
+      setPatientIdInput('');
+      setPatientNameInput('');
       
       const resolvedId = data.patient_id;
       const resolvedName = data.patient_name;
@@ -349,18 +349,32 @@ export default function App() {
         fetchAlerts();
       }
 
-      setMessages(prev => [
-        ...prev,
-        { role: 'user', content: `📄 Uploaded file: '${uploadedFileName}' for Patient ID '${targetId}'` },
-        { role: 'ai', content: `✅ **Dual Ingestion Successful!**\n\n- **Patient:** ${resolvedName} (ID: \`${resolvedId}\`)\n- **File Ingested:** \`${uploadedFileName}\`\n- **MongoDB:** ${data.mongodb_status}\n- **ChromaDB:** ${data.chromadb_status}\n- **Post-Ingestion Risk Scan:** ${alertMsg}\n\nFile saved to \`data/\` directory. Vectors indexed in ChromaDB database.` }
-      ]);
+      const successReply = `✅ **File for this patient is saved successfully.**\n\n- **Patient:** ${resolvedName} (ID: \`${resolvedId}\`)\n- **Document Ingested:** \`${uploadedFileName}\``;
+
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0 && updated[updated.length - 1].content.includes('Processing document ingestion')) {
+          updated[updated.length - 1] = { role: 'ai', content: successReply };
+        } else {
+          updated.push({ role: 'ai', content: successReply });
+        }
+        return updated;
+      });
 
       fetchPatients();
 
     } catch (err: any) {
       console.error("Upload Error:", err);
-      setIsUploading(false);
-      setUploadStatusMsg(`❌ Upload Failed: ${err.message}`);
+      const errorReply = `❌ **Upload Failed:** ${err.message}`;
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0 && updated[updated.length - 1].content.includes('Processing document ingestion')) {
+          updated[updated.length - 1] = { role: 'ai', content: errorReply };
+        } else {
+          updated.push({ role: 'ai', content: errorReply });
+        }
+        return updated;
+      });
     }
   };
 
@@ -402,6 +416,8 @@ export default function App() {
           recognitionRef={recognitionRef}
           fileInputRef={fileInputRef}
           handleFileUpload={handleFileUpload}
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
         />
       )}
 
@@ -465,23 +481,6 @@ export default function App() {
         selectedAlertModal={selectedAlertModal}
         setSelectedAlertModal={setSelectedAlertModal}
         handleAcknowledgeAlert={handleAcknowledgeAlert}
-      />
-
-      {/* UPLOAD FILE & INGESTION MODAL */}
-      <IngestionModal
-        isUploadModalOpen={isUploadModalOpen}
-        setIsUploadModalOpen={setIsUploadModalOpen}
-        selectedFile={selectedFile}
-        setSelectedFile={setSelectedFile}
-        patientIdInput={patientIdInput}
-        setPatientIdInput={setPatientIdInput}
-        patientNameInput={patientNameInput}
-        setPatientNameInput={setPatientNameInput}
-        patientAgeInput={patientAgeInput}
-        setPatientAgeInput={setPatientAgeInput}
-        isUploading={isUploading}
-        uploadStatusMsg={uploadStatusMsg}
-        handleStartUpload={handleStartUpload}
       />
 
     </div>

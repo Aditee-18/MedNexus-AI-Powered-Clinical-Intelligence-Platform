@@ -14,6 +14,8 @@ interface DashboardProps {
   recognitionRef: React.MutableRefObject<any>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  selectedFile: File | null;
+  setSelectedFile: (file: File | null) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -27,6 +29,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   recognitionRef,
   fileInputRef,
   handleFileUpload,
+  selectedFile,
+  setSelectedFile,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +165,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             +
           </button>
+
+          {/* ATTACHED FILE CHIP */}
+          {selectedFile && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-950/80 border border-blue-700/60 rounded-xl text-xs text-blue-200">
+              <span className="truncate max-w-[150px]">📄 {selectedFile.name}</span>
+              <button onClick={() => setSelectedFile(null)} className="text-blue-400 hover:text-white ml-1 font-bold">✕</button>
+            </div>
+          )}
 
           {/* CHAT INPUT AREA */}
           <input

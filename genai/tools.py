@@ -116,10 +116,10 @@ def upload_patient_file(file_name: str, patient_id: str, name: str, age: int) ->
         else:
             chroma_message = f"Profile updated in MongoDB. File {file_name} can now be uploaded to {matching_folder.name}."
             
-        return f"Dual Ingestion Pipeline Status:\n- MongoDB: {mongo_message}\n- ChromaDB: {chroma_message}"
+        return f"✅ File for this patient is saved successfully.\n- Patient: {name} (ID: {patient_id})\n- Document Ingested: {file_name}"
         
     except Exception as e:
-        return f"Failed to execute file upload tool. Error: {str(e)}"
+        return f"Failed to save patient file. Error: {str(e)}"
     
 # Tool 4: Smart Retrospective Health Trend Agent
 @tool

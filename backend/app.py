@@ -179,18 +179,47 @@ async def chat_with_agent(request: ChatRequest):
 
 @app.post("/api/upload")
 async def upload_patient_file(
-    patient_id: str = Form(...),
+    patient_id: str = Form(""),
     name: str = Form(""),
     age: int = Form(30),
     file: UploadFile = File(...)
 ):
     try:
-        print(f"Processing upload for input Patient ID: {patient_id}, Name: {name}, Age: {age}")
+        clean_patient_id = patient_id.strip()
+        clean_name = name.strip()
+
+        # Auto-parse patient name/ID from filename if missing (e.g., Ritik_Jaiswal_Report.pdf)
+        filename_clean = file.filename.replace("_", " ").replace("-", " ")
+        if not clean_patient_id:
+            # Check if filename contains known patient name or ID
+            patients = get_all_patients()
+            for p in patients:
+                p_name = p.get("name", "")
+                p_id = p.get("patient_id", "")
+                first_name = p_name.split()[0] if p_name else ""
+                if (p_name and p_name.lower() in filename_clean.lower()) or \
+                   (first_name and len(first_name) > 2 and first_name.lower() in filename_clean.lower()) or \
+                   (p_id and p_id.lower() in filename_clean.lower()):
+                    clean_patient_id = p_id
+                    clean_name = p_name
+                    break
+
+        if not clean_patient_id:
+            # Fallback: extract name from filename prefix
+            parts = file.filename.split(".")[0].split("_")
+            if len(parts) >= 2 and parts[0].isalpha():
+                clean_name = f"{parts[0]} {parts[1]}"
+                clean_patient_id = f"0{abs(hash(clean_name)) % 90000 + 10000}"
+            else:
+                clean_patient_id = "09437"
+                clean_name = "Patient Records"
+
+        print(f"Processing upload for resolved Patient ID: {clean_patient_id}, Name: {clean_name}, Age: {age}")
         
         # 1. Update/Create MongoDB Patient Profile
         mongo_res = register_file_in_mongodb(
-            patient_id=patient_id, 
-            name=name, 
+            patient_id=clean_patient_id, 
+            name=clean_name, 
             age=age, 
             filename=file.filename
         )
