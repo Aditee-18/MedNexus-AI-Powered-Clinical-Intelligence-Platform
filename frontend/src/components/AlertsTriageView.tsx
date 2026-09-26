@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { AlertItem } from '../types';
 
 interface AlertsTriageViewProps {
@@ -14,6 +14,26 @@ export const AlertsTriageView: React.FC<AlertsTriageViewProps> = ({
   setSelectedAlertModal,
   handleAcknowledgeAlert,
 }) => {
+  const [filterTab, setFilterTab] = useState<'active' | 'acknowledged' | 'all'>('active');
+
+  const handleClearAll = async () => {
+    if (!window.confirm("Are you sure you want to empty the clinical alert section?")) return;
+    try {
+      const res = await fetch('http://localhost:8000/api/alerts/clear', { method: 'POST' });
+      if (res.ok) {
+        fetchAlerts();
+      }
+    } catch (e) {
+      console.error("Clear alerts error:", e);
+    }
+  };
+
+  const filteredAlerts = alerts.filter(a => {
+    if (filterTab === 'active') return a.status !== 'acknowledged';
+    if (filterTab === 'acknowledged') return a.status === 'acknowledged';
+    return true;
+  });
+
   return (
     <div className="flex-1 overflow-y-auto p-8 pb-20 bg-slate-900">
       <div className="max-w-5xl mx-auto">
@@ -31,6 +51,12 @@ export const AlertsTriageView: React.FC<AlertsTriageViewProps> = ({
           </div>
           <div className="flex gap-3">
             <button
+              onClick={handleClearAll}
+              className="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-medium rounded-xl border border-red-800/60 transition-colors"
+            >
+              🗑️ Clear All Alerts
+            </button>
+            <button
               onClick={fetchAlerts}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl border border-slate-700 transition-colors"
             >
@@ -39,16 +65,50 @@ export const AlertsTriageView: React.FC<AlertsTriageViewProps> = ({
           </div>
         </div>
 
+        {/* TAB FILTER CONTROLS */}
+        <div className="flex items-center gap-2 mb-6">
+          <button
+            onClick={() => setFilterTab('active')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              filterTab === 'active'
+                ? 'bg-red-500 text-white shadow-md shadow-red-950/40'
+                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+            }`}
+          >
+            Active Triage ({alerts.filter(a => a.status !== 'acknowledged').length})
+          </button>
+          <button
+            onClick={() => setFilterTab('acknowledged')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              filterTab === 'acknowledged'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
+                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+            }`}
+          >
+            Acknowledged History ({alerts.filter(a => a.status === 'acknowledged').length})
+          </button>
+          <button
+            onClick={() => setFilterTab('all')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              filterTab === 'all'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-950/40'
+                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+            }`}
+          >
+            All Logs ({alerts.length})
+          </button>
+        </div>
+
         {/* ALERTS LIST */}
-        {alerts.length === 0 ? (
+        {filteredAlerts.length === 0 ? (
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-12 text-center text-slate-400">
             <span className="text-4xl mb-3 block">✅</span>
-            <h3 className="text-lg font-semibold text-slate-200">No Active Clinical Alerts</h3>
-            <p className="text-xs text-slate-400 mt-1">All patient records are within stable baseline limits.</p>
+            <h3 className="text-lg font-semibold text-slate-200">No Alerts in this View</h3>
+            <p className="text-xs text-slate-400 mt-1">All patient records are clean and within stable parameters.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {alerts.map((alert) => {
+            {filteredAlerts.map((alert) => {
               const isAcknowledged = alert.status === 'acknowledged';
               const isHigh = alert.severity_level === 'high' && !isAcknowledged;
 

@@ -107,9 +107,10 @@ def save_alert_to_mongodb(alert_data: dict):
     )
     return alert_doc
 
-def get_all_alerts():
-    """Returns all alerts sorted by risk_score descending (High -> Low)."""
-    alerts = list(alerts_collection.find({}, {"_id": 0}).sort("risk_score", -1))
+def get_all_alerts(active_only: bool = False):
+    """Returns alerts sorted by risk_score descending (High -> Low)."""
+    query = {"status": "active"} if active_only else {}
+    alerts = list(alerts_collection.find(query, {"_id": 0}).sort("risk_score", -1))
     return alerts
 
 def acknowledge_alert(alert_id: str):
@@ -121,6 +122,16 @@ def acknowledge_alert(alert_id: str):
         {"$set": {"status": "acknowledged", "acknowledgedAt": now}}
     )
     return res.modified_count > 0
+
+def delete_alert(alert_id: str):
+    """Permanently deletes a specific alert document from MongoDB."""
+    res = alerts_collection.delete_one({"alert_id": alert_id})
+    return res.deleted_count > 0
+
+def clear_all_alerts():
+    """Empties all alert documents from MongoDB alerts collection."""
+    res = alerts_collection.delete_many({})
+    return res.deleted_count
 
 # --- USER AUTHENTICATION HELPERS ---
 def create_user_account(name: str, email: str, password_hash: str, hospital_id: str = "MED-2026", specialty: str = "General Medicine"):

@@ -129,6 +129,24 @@ def mark_alert_acknowledged(alert_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/alerts/{alert_id}")
+def delete_single_alert(alert_id: str):
+    try:
+        from backend.database import delete_alert
+        deleted = delete_alert(alert_id)
+        return {"status": "success", "deleted": deleted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/alerts/clear")
+def clear_alerts_collection():
+    try:
+        from backend.database import clear_all_alerts
+        count = clear_all_alerts()
+        return {"status": "success", "cleared_count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- PERSISTENT CHAT ENDPOINTS ---
 @app.get("/api/chat/sessions")
 def fetch_chat_sessions(user_id: str = "usr_default"):
