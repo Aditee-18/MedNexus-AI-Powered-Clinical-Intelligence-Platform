@@ -188,10 +188,36 @@ async def upload_patient_file(
         clean_patient_id = patient_id.strip()
         clean_name = name.strip()
 
-        # Auto-parse patient name/ID from filename if missing (e.g., Ritik_Jaiswal_Report.pdf)
-        filename_clean = file.filename.replace("_", " ").replace("-", " ")
+        root_dir = Path(__file__).resolve().parent.parent
+        temp_dir = root_dir / "scratch" / "temp_uploads"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_file_path = temp_dir / file.filename
+
+        # Save temporary file to disk for OCR/PDF text extraction
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # 1. Parse Document Text FIRST (PyPDF / CSV / EasyOCR)
+        documents = process_file(temp_file_path)
+        extracted_text = " ".join([doc.page_content for doc in documents])
+
+        import re
+
+        # Extract Patient ID directly from report text if missing
         if not clean_patient_id:
-            # Check if filename contains known patient name or ID
+            id_match = re.search(r'(?:Patient\s*ID|ID|Hospital\s*ID)[:\s]*([A-Z]{3}-\d{4}-\d{4,6}|\d{4,6})', extracted_text, re.IGNORECASE)
+            if id_match:
+                clean_patient_id = id_match.group(1).strip()
+
+        # Extract Patient Name directly from report text if missing
+        if not clean_name:
+            name_match = re.search(r'(?:Patient\s*Name|Name)[:\s]*([A-Za-z\s]+?)(?=\s+(?:Age|ID|Gender|Sample|Referring|Report|Date|\d|\n|$))', extracted_text, re.IGNORECASE)
+            if name_match:
+                clean_name = name_match.group(1).strip()
+
+        # Check filename if ID/Name are still missing
+        filename_clean = file.filename.replace("_", " ").replace("-", " ")
+        if not clean_patient_id or not clean_name:
             patients = get_all_patients()
             for p in patients:
                 p_name = p.get("name", "")
@@ -200,23 +226,24 @@ async def upload_patient_file(
                 if (p_name and p_name.lower() in filename_clean.lower()) or \
                    (first_name and len(first_name) > 2 and first_name.lower() in filename_clean.lower()) or \
                    (p_id and p_id.lower() in filename_clean.lower()):
-                    clean_patient_id = p_id
-                    clean_name = p_name
+                    if not clean_patient_id: clean_patient_id = p_id
+                    if not clean_name: clean_name = p_name
                     break
 
+        # Fallback for new unnamed files (NO HARDCODED 09437 DEFAULT!)
         if not clean_patient_id:
-            # Fallback: extract name from filename prefix
             parts = file.filename.split(".")[0].split("_")
             if len(parts) >= 2 and parts[0].isalpha():
-                clean_name = f"{parts[0]} {parts[1]}"
-                clean_patient_id = f"0{abs(hash(clean_name)) % 90000 + 10000}"
+                if not clean_name: clean_name = f"{parts[0]} {parts[1]}"
+                clean_patient_id = f"AMH-2026-0{abs(hash(clean_name)) % 9000 + 1000}"
             else:
-                clean_patient_id = "09437"
-                clean_name = "Patient Records"
+                import random
+                clean_patient_id = f"AMH-2026-{random.randint(10000, 99999)}"
+                if not clean_name: clean_name = "New Patient"
 
         print(f"Processing upload for resolved Patient ID: {clean_patient_id}, Name: {clean_name}, Age: {age}")
         
-        # 1. Update/Create MongoDB Patient Profile
+        # 2. Update/Create MongoDB Patient Profile
         mongo_res = register_file_in_mongodb(
             patient_id=clean_patient_id, 
             name=clean_name, 
@@ -228,8 +255,7 @@ async def upload_patient_file(
         formal_name = mongo_res["formal_name"]
         mongo_msg = mongo_res["status"]
         
-        # 2. Find or Create Standardized Patient Folder in data/
-        root_dir = Path(__file__).resolve().parent.parent
+        # 3. Find or Create Standardized Patient Folder in data/
         data_dir = root_dir / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
         
@@ -240,25 +266,21 @@ async def upload_patient_file(
                 break
                 
         if not matching_folder:
-            clean_name = formal_name.replace(" ", "_")
-            folder_name = f"{clean_name}_{formal_id}"
+            folder_clean_name = formal_name.replace(" ", "_")
+            folder_name = f"{folder_clean_name}_{formal_id}"
             matching_folder = data_dir / folder_name
             matching_folder.mkdir(parents=True, exist_ok=True)
             
         file_path = matching_folder / file.filename
         
-        # Save file to disk
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        # 3. Document Parsing (PDF, CSV, TXT, OCR Images)
-        documents = process_file(file_path)
+        # Move temp file to permanent data location
+        shutil.move(str(temp_file_path), str(file_path))
         
+        # 4. Attach Metadata & Chunk Documents
         for doc in documents:
             doc.metadata["patient_id"] = formal_id
             doc.metadata["file_name"] = file.filename
             
-        # 4. Text Chunking
         chunks = get_documents_chunks(documents)
         
         # 5. ChromaDB Vector Store Ingestion
