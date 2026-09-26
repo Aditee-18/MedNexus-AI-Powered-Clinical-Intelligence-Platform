@@ -205,13 +205,13 @@ async def upload_patient_file(
 
         # Extract Patient ID directly from report text if missing
         if not clean_patient_id:
-            id_match = re.search(r'(?:Patient\s*ID|ID|Hospital\s*ID)[:\s]*([A-Z]{3}-\d{4}-\d{4,6}|\d{4,6})', extracted_text, re.IGNORECASE)
+            id_match = re.search(r'(?:Patient\s*ID|Hospital\s*ID|ID)[:\s]*([A-Z]{3}-\d{4}-\d{4,6}|\d{4,6})', extracted_text, re.IGNORECASE)
             if id_match:
                 clean_patient_id = id_match.group(1).strip()
 
         # Extract Patient Name directly from report text if missing
         if not clean_name:
-            name_match = re.search(r'(?:Patient\s*Name|Name)[:\s]*([A-Za-z\s]+?)(?=\s+(?:Age|ID|Gender|Sample|Referring|Report|Date|\d|\n|$))', extracted_text, re.IGNORECASE)
+            name_match = re.search(r'(?:Patient\s*Name|Name)[:\s]*([A-Za-z]+\s+[A-Za-z]+)', extracted_text, re.IGNORECASE)
             if name_match:
                 clean_name = name_match.group(1).strip()
 

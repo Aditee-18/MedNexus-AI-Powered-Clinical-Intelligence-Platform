@@ -19,19 +19,22 @@ except Exception as e:
 
 def register_file_in_mongodb(patient_id: str, name: str, age: int, filename: str):
     """
-    Searches MongoDB for patient using full or partial Patient ID (e.g. '09437' or 'AMH-2026-09437').
+    Searches MongoDB for patient using full or partial Patient ID.
     If found, updates existing patient files. If not found, registers a new formal profile.
     """
     clean_id = patient_id.strip()
-    
-    # Perform regex search to match partial or full Patient ID
-    existing_patient = patients_collection.find_one(
-        {"patient_id": {"$regex": clean_id, "$options": "i"}}
-    )
+    existing_patient = None
+
+    # CRITICAL BUGFIX: Only run MongoDB regex if clean_id is NOT empty!
+    # If clean_id is empty (""), regex {"$regex": ""} matches the very first patient document (Aarav Mehta).
+    if clean_id:
+        existing_patient = patients_collection.find_one(
+            {"patient_id": {"$regex": clean_id, "$options": "i"}}
+        )
     
     if existing_patient:
         formal_id = existing_patient["patient_id"]
-        formal_name = existing_patient.get("name", name)
+        formal_name = existing_patient.get("name", name if name else "Patient")
         patients_collection.update_one(
             {"patient_id": formal_id},
             {"$addToSet": {"uploaded_files": filename}}
@@ -43,15 +46,20 @@ def register_file_in_mongodb(patient_id: str, name: str, age: int, filename: str
             "is_new": False
         }
     else:
-        # Standardize ID if just numbers/short code were passed
-        if clean_id.upper().startswith("AMH-"):
+        # Generate standardized formal ID for new patient
+        if clean_id and clean_id.upper().startswith("AMH-"):
             formal_id = clean_id.upper()
-        else:
+        elif clean_id:
             formal_id = f"AMH-2026-{clean_id}"
+        else:
+            import random
+            formal_id = f"AMH-2026-{random.randint(10000, 99999)}"
+
+        patient_name = name.strip() if name and name.strip() else f"Patient {formal_id.split('-')[-1]}"
 
         new_profile = {
             "patient_id": formal_id,
-            "name": name if name else f"Patient {clean_id}",
+            "name": patient_name,
             "age": age,
             "uploaded_files": [filename],
             "status": "Active"

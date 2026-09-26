@@ -12,8 +12,8 @@ from backend.database import patients_collection, register_file_in_mongodb
 @tool
 def lookup_patient_by_name(name: str) -> str:
     """
-    USE THIS TOOL when the doctor provides a patient's name (like 'Aarav' or 'Rohan') 
-    but you do not know their formal hospital ID (like 'AMH-2026-09437').
+    USE THIS TOOL when the doctor provides a patient's name 
+    but you do not know their formal hospital ID.
     This searches MongoDB to discover their unique Patient ID and baseline demographics.
     """
     print(f"\n[Agent Action] Searching MongoDB directory for name: {name}...")
@@ -31,7 +31,7 @@ def lookup_patient_by_name(name: str) -> str:
 def search_patient_records(query: str, patient_id: str = None) -> str:
     """
     USE THIS TOOL to search the clinical vector database (ChromaDB) for specific medical details.
-    You can pass either the formal Patient ID (e.g. 'AMH-2026-09437') or the patient's name (e.g. 'Meera', 'Rohan', 'Neha').
+    You can pass either the formal Patient ID or the patient's name.
     """
     if not patient_id:
         return "Error: Cannot search vector clinical logs without a patient name or ID."
