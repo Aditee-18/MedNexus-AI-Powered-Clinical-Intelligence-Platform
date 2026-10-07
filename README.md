@@ -388,20 +388,3 @@ The script will:
 > **DISCLAIMER**: MedNexus AI is an advanced Clinical Decision Support (CDS) research system designed exclusively to assist licensed healthcare providers in organizing and analyzing clinical data. It is **not** a replacement for professional clinical judgment, diagnostic evaluations, or medical decision-making. 
 > 
 > All patient records included in the `data/` directory are synthetic or anonymized benchmark cases used strictly for development, demonstration, and evaluation purposes. In a production healthcare setting, deploy this platform in accordance with applicable HIPAA, GDPR, and regional health data privacy regulations.
-
----
-
-## 🤝 Contributing
-
-Contributions to MedNexus AI are welcome! Please follow these steps:
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feature/clinical-enhancement`.
-3. Commit your changes: `git commit -m "feat: Add new clinical capability"`.
-4. Push to the branch: `git push origin feature/clinical-enhancement`.
-5. Open a Pull Request.
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
