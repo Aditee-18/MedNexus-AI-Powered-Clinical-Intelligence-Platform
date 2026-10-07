@@ -9,8 +9,8 @@ interface IngestionModalProps {
   setPatientIdInput: (id: string) => void;
   patientNameInput: string;
   setPatientNameInput: (name: string) => void;
-  patientAgeInput: number;
-  setPatientAgeInput: (age: number) => void;
+  patientAgeInput?: number;
+  setPatientAgeInput?: (age: number) => void;
   isUploading: boolean;
   uploadStatusMsg: string;
   handleStartUpload: () => void;
@@ -25,8 +25,6 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
   setPatientIdInput,
   patientNameInput,
   setPatientNameInput,
-  patientAgeInput,
-  setPatientAgeInput,
   isUploading,
   uploadStatusMsg,
   handleStartUpload,
@@ -63,37 +61,26 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
           <div>
             <label className="text-xs font-medium text-slate-300 mb-1 block flex justify-between">
               <span>Hospital Patient ID (Full or Last Digits)</span>
-              <span className="text-blue-400 font-normal">e.g. 09437 or AMH-2026-09437</span>
+              <span className="text-blue-400 font-normal">e.g. 18472 or AMH-2026-18472</span>
             </label>
             <input
               type="text"
-              placeholder="Enter Patient ID (e.g. 09437 or AMH-2026-09437)"
+              placeholder="Enter Patient ID (e.g. 18472 or AMH-2026-18472)"
               value={patientIdInput}
               onChange={(e) => setPatientIdInput(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm rounded-xl px-4 py-3 outline-none focus:border-blue-500 font-mono"
             />
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs font-medium text-slate-300 mb-1 block">Patient Name (Optional for existing)</label>
-              <input
-                type="text"
-                placeholder="Auto-matched if ID exists"
-                value={patientNameInput}
-                onChange={(e) => setPatientNameInput(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-blue-500"
-              />
-            </div>
-            <div className="w-24">
-              <label className="text-xs font-medium text-slate-300 mb-1 block">Age</label>
-              <input
-                type="number"
-                value={patientAgeInput}
-                onChange={(e) => setPatientAgeInput(parseInt(e.target.value) || 0)}
-                className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-blue-500"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-medium text-slate-300 mb-1 block">Patient Name (Optional for existing)</label>
+            <input
+              type="text"
+              placeholder="Enter Patient Name (e.g. Ritik Jaiswal)"
+              value={patientNameInput}
+              onChange={(e) => setPatientNameInput(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+            />
           </div>
         </div>
 
